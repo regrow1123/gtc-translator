@@ -192,12 +192,15 @@ def main():
 
             if time_since_send >= BUFFER_SECONDS and combined and len(combined) >= MIN_CHARS:
                 segment_count += 1
-                # 서버 시간 + 영상 내 경과 시간
+                # 서버 시간 + 영상 내 경과 시간 (24시간 이내만)
                 now_str = datetime.now().strftime('%H:%M:%S')
                 if stream_start_ts:
-                    elapsed = int(time.time() - stream_start_ts)
-                    h, m, s = elapsed // 3600, (elapsed % 3600) // 60, elapsed % 60
-                    timestamp = f"{now_str} ({int(h):02d}:{int(m):02d}:{int(s):02d})"
+                    stream_elapsed = int(time.time() - stream_start_ts)
+                    if stream_elapsed < 86400:  # 24시간 미만
+                        h, m, s = stream_elapsed // 3600, (stream_elapsed % 3600) // 60, stream_elapsed % 60
+                        timestamp = f"{now_str} ({int(h):02d}:{int(m):02d}:{int(s):02d})"
+                    else:
+                        timestamp = now_str  # 상시 라이브 → 서버 시간만
                 else:
                     timestamp = now_str
 
