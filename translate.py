@@ -205,7 +205,11 @@ def main():
             time_since_send = time.time() - last_send
             combined = " ".join(text_buffer)
 
-            if time_since_send >= BUFFER_SECONDS and combined and len(combined) >= MIN_CHARS:
+            # 30초 경과 + 문장 끝에서 끊기, 최대 45초 대기
+            ends_with_sentence = combined and combined.rstrip()[-1:] in (".","?","!")
+            time_ok = time_since_send >= BUFFER_SECONDS
+            force_send = time_since_send >= BUFFER_SECONDS + 15  # 최대 45초
+            if combined and len(combined) >= MIN_CHARS and ((time_ok and ends_with_sentence) or force_send):
                 segment_count += 1
                 # 서버 시간 + 영상 내 경과 시간 (24시간 이내만)
                 now_str = datetime.now().strftime('%H:%M:%S')
