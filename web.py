@@ -597,7 +597,6 @@ def build_html(video_id=""):
     let txt = '';
     allData.forEach(d => {{
       if (d.live) return;
-      txt += `[${{d.time}}]\\n`;
       if (d.kr) txt += `${{d.kr}}\\n`;
       txt += `${{d.en}}\\n\\n`;
     }});
