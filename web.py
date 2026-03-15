@@ -77,7 +77,7 @@ class Handler(BaseHTTPRequestHandler):
             env["LD_LIBRARY_PATH"] = "/home/sund4y/stable-diffusion-webui/venv/lib/python3.11/site-packages/torch/lib"
             env["PYTHONUNBUFFERED"] = "1"
             env["PATH"] = f"{os.environ['HOME']}/.deno/bin:{env['PATH']}"
-            env["OPENCLAW_TOKEN"] = "eab750efc63e4b50c862c132cad34dac9df9cefd2bec812b"
+            env["OPENCLAW_TOKEN"] = os.environ.get("OPENCLAW_TOKEN", "")
             subprocess.Popen(
                 ["python3", str(Path(__file__).parent / "translate.py"), url],
                 env=env,
@@ -121,7 +121,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b'{"ok": true, "message": "stopped + email sent"}')
+            self.wfile.write(b'{"ok": true, "message": "stopped"}')
             return
 
         if parsed.path == "/api/state":

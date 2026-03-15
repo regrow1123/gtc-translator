@@ -1,6 +1,6 @@
 """
 GTC 키노트 실시간 번역기
-YouTube 오디오 스트림 → faster-whisper STT → OpenClaw 번역 → 텔레그램 전송
+YouTube 오디오 스트림 → faster-whisper STT → OpenClaw 번역 → 웹 뷰어
 """
 import subprocess
 import time
@@ -102,6 +102,9 @@ def main():
 
     youtube_url = sys.argv[1]
 
+    if not OPENCLAW_TOKEN:
+        print("[경고] OPENCLAW_TOKEN 미설정 — 번역 기능 사용 불가 (STT만 동작)")
+
     # Whisper 모델 로딩
     print("[STT] faster-whisper 모델 로딩...")
     model = WhisperModel("large-v3", device="cuda", compute_type="float16")
@@ -115,11 +118,10 @@ def main():
 
     # 메타데이터 + 포맷 확인
     print("[포맷] 확인 중...")
-    import subprocess as sp
 
     # 스트림 시작 시간 가져오기
     stream_start_ts = 0
-    meta_result = sp.run(
+    meta_result = subprocess.run(
         ["yt-dlp", "--dump-json", "--no-warnings", youtube_url],
         capture_output=True, text=True
     )
@@ -131,7 +133,7 @@ def main():
     except Exception:
         pass
 
-    fmt_result = sp.run(
+    fmt_result = subprocess.run(
         ["yt-dlp", "--list-formats", "--no-warnings", youtube_url],
         capture_output=True, text=True
     )
@@ -185,10 +187,10 @@ def main():
                 text_buffer.append(text)
                 print(f"[STT] {text}")
 
-            elapsed = time.time() - last_send
+            time_since_send = time.time() - last_send
             combined = " ".join(text_buffer)
 
-            if elapsed >= BUFFER_SECONDS and combined and len(combined) >= MIN_CHARS:
+            if time_since_send >= BUFFER_SECONDS and combined and len(combined) >= MIN_CHARS:
                 segment_count += 1
                 # 서버 시간 + 영상 내 경과 시간
                 now_str = datetime.now().strftime('%H:%M:%S')
@@ -245,11 +247,10 @@ def main():
         done_file = Path(__file__).parent / "DONE"
         done_file.write_text(f"completed: {datetime.now().isoformat()}\nsegments: {segment_count}\n")
 
-        # 자동 이메일 전송
-        import subprocess as sp
+        # 자동 이메일 전송 (gog 인증 필요)
         log_file = Path(__file__).parent / "translation_log.md"
         if log_file.exists() and segment_count > 0:
-            sp.run([
+            subprocess.run([
                 "gog", "gmail", "send",
                 "--to", "sund4y1123@gmail.com",
                 "--subject", f"번역 완료 ({segment_count}개 세그먼트, {datetime.now().strftime('%Y-%m-%d %H:%M')})",
