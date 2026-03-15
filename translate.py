@@ -14,8 +14,8 @@ from datetime import datetime
 from faster_whisper import WhisperModel
 
 # === 설정 ===
-OPENCLAW_URL = "http://127.0.0.1:18789/v1/responses"
-OPENCLAW_TOKEN = "REDACTED"
+OPENCLAW_URL = os.environ.get("OPENCLAW_URL", "http://127.0.0.1:18789/v1/responses")
+OPENCLAW_TOKEN = os.environ.get("OPENCLAW_TOKEN", "")
 LOG_FILE = Path(__file__).parent / "translation_log.md"
 
 # STT 설정
