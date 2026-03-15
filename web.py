@@ -550,10 +550,20 @@ def build_html(video_id=""):
 
       // 상태 업데이트
       const badge = document.getElementById('liveBadge');
-      if (data.length > 0 && data.length !== lastCount) {{
-        badge.textContent = 'LIVE';
-        badge.style.background = '#e53e3e';
-      }}
+      try {{
+        const sr = await fetch('/api/state');
+        const st = await sr.json();
+        if (st.running) {{
+          badge.textContent = 'LIVE';
+          badge.style.background = '#e53e3e';
+        }} else if (data.length > 0) {{
+          badge.textContent = 'ENDED';
+          badge.style.background = '#6b7280';
+        }} else {{
+          badge.textContent = 'READY';
+          badge.style.background = '#6b7280';
+        }}
+      }} catch(e) {{}}
 
       if (data.length !== lastCount) {{
         allData = data;
