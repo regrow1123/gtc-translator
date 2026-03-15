@@ -14,8 +14,6 @@ from datetime import datetime
 from faster_whisper import WhisperModel
 
 # === 설정 ===
-TELEGRAM_BOT_TOKEN = "REDACTED"
-TELEGRAM_CHAT_ID = "8645727550"
 OPENCLAW_URL = "http://127.0.0.1:18789/v1/responses"
 OPENCLAW_TOKEN = "REDACTED"
 LOG_FILE = Path(__file__).parent / "translation_log.md"
@@ -30,19 +28,6 @@ MAX_CONTEXT_HISTORY = 3  # 이전 번역 컨텍스트 유지 개수
 os.environ["LD_LIBRARY_PATH"] = "/home/sund4y/stable-diffusion-webui/venv/lib/python3.11/site-packages/torch/lib"
 os.environ["PATH"] = f"{os.environ['HOME']}/.deno/bin:{os.environ['PATH']}"
 
-
-def send_telegram(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    try:
-        r = requests.post(url, json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": text,
-            "parse_mode": "HTML"
-        }, timeout=10)
-        return r.json().get("ok", False)
-    except Exception as e:
-        print(f"[TG 실패] {e}")
-        return False
 
 
 translation_history = []  # 이전 번역 저장
@@ -119,9 +104,7 @@ def main():
     model = WhisperModel("large-v3", device="cuda", compute_type="float16")
     print("[STT] 로딩 완료")
 
-    # 시작 알림
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    send_telegram(f"<b>[실시간 번역 시작]</b>\n{now}")
 
     # 로그 파일 초기화
     with open(LOG_FILE, "w", encoding="utf-8") as f:
@@ -180,14 +163,8 @@ def main():
 
                 if translated:
                     translation_history.append(translated)
-                    msg = (
-                        f"<b>[{timestamp}]</b>\n\n"
-                        f"{translated}\n\n"
-                        f"<i>{combined}</i>"
-                    )
-                    send_telegram(msg)
                     log_translation(combined, translated, timestamp)
-                    print(f"[전송] {translated[:80]}...")
+                    print(f"[번역] {translated[:80]}...")
 
                 text_buffer = []
                 last_send = time.time()
@@ -197,7 +174,6 @@ def main():
     finally:
         ff_proc.terminate()
         yt_proc.terminate()
-        send_telegram(f"<b>[실시간 번역 종료]</b>\n총 {segment_count}개 세그먼트")
         print(f"[완료] 총 {segment_count}개 세그먼트 번역")
 
 
