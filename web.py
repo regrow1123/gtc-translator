@@ -448,6 +448,12 @@ def build_html(video_id=""):
     padding-top: 8px;
   }}
 
+  .seg-live {{
+    opacity: 0.6;
+    border-left-color: var(--text-dim);
+    border-left-style: dashed;
+  }}
+
   .seg-en-only {{
     font-size: 14px;
     color: var(--text);
@@ -553,7 +559,7 @@ def build_html(video_id=""):
         allData = data;
         const container = document.getElementById('translations');
         container.innerHTML = data.map(d => `
-          <div class="segment">
+          <div class="segment ${{d.live ? 'seg-live' : ''}}">
             <div class="seg-time">${{d.time}}</div>
             ${{d.kr ? `<div class="seg-kr">${{d.kr}}</div>` : ''}}
             <div class="seg-en ${{d.kr ? '' : 'seg-en-only'}}">${{d.en}}</div>

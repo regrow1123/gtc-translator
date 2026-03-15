@@ -187,6 +187,17 @@ def main():
                 text_buffer.append(text)
                 print(f"[STT] {text}")
 
+                # 원문 즉시 웹에 표시
+                now_stt = datetime.now().strftime('%H:%M:%S')
+                stt_data = []
+                if TRANSLATIONS_JSON.exists():
+                    try:
+                        stt_data = json.loads(TRANSLATIONS_JSON.read_text())
+                    except Exception:
+                        stt_data = []
+                stt_data.append({"time": now_stt, "en": text, "live": True})
+                TRANSLATIONS_JSON.write_text(json.dumps(stt_data, ensure_ascii=False))
+
             time_since_send = time.time() - last_send
             combined = " ".join(text_buffer)
 
@@ -214,17 +225,32 @@ def main():
                     except Exception:
                         pass
 
+                # live 청크 제거 → 확정 세그먼트로 교체
+                confirmed_data = []
+                if TRANSLATIONS_JSON.exists():
+                    try:
+                        confirmed_data = json.loads(TRANSLATIONS_JSON.read_text())
+                    except Exception:
+                        confirmed_data = []
+                confirmed_data = [d for d in confirmed_data if not d.get("live")]
+
                 if translate_enabled:
                     print(f"[번역 중] ({len(combined)} chars)...")
                     translated = translate_openclaw(combined)
                     if translated:
                         translation_history.append(translated)
+                        confirmed_data.append({"time": timestamp, "en": combined, "kr": translated})
                         log_translation(combined, translated, timestamp)
                         print(f"[번역] {translated[:80]}...")
+                    else:
+                        confirmed_data.append({"time": timestamp, "en": combined})
+                        log_translation(combined, "", timestamp)
                 else:
-                    # STT 원문만 저장
+                    confirmed_data.append({"time": timestamp, "en": combined})
                     log_translation(combined, "", timestamp)
                     print(f"[원문] {combined[:80]}...")
+
+                TRANSLATIONS_JSON.write_text(json.dumps(confirmed_data, ensure_ascii=False, indent=2))
 
                 text_buffer = []
                 last_send = time.time()
