@@ -25,6 +25,14 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/start":
             import subprocess
+            # 관리자 인증
+            auth = self.headers.get("X-Admin-Key", "")
+            if auth != "1123":
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": false, "message": "forbidden"}')
+                return
             content_length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(content_length)) if content_length else {}
             url = body.get("url", "")
@@ -65,6 +73,13 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/api/stop":
             import subprocess
+            auth = self.headers.get("X-Admin-Key", "")
+            if auth != "1123":
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": false, "message": "forbidden"}')
+                return
             subprocess.run(["pkill", "-f", "translate.py"], capture_output=True)
             # 이메일 전송
             log_file = Path(__file__).parent / "translation_log.md"
@@ -100,8 +115,9 @@ class Handler(BaseHTTPRequestHandler):
         # 메인 페이지
         params = urllib.parse.parse_qs(parsed.query)
         video_id = params.get("v", [""])[0]
+        admin = params.get("admin", [""])[0] == "1123"
 
-        html = build_html(video_id)
+        html = build_html(video_id, admin)
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
@@ -114,7 +130,7 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
-def build_html(video_id=""):
+def build_html(video_id="", admin=False):
     youtube_embed = ""
     if video_id:
         youtube_embed = f'<iframe src="https://www.youtube.com/embed/{video_id}?autoplay=1" frameborder="0" allowfullscreen allow="autoplay"></iframe>'
@@ -400,9 +416,9 @@ def build_html(video_id=""):
     <div class="panel-header">
       <span class="panel-title">LIVE TRANSLATION</span>
       <div>
-        <input type="text" id="urlInput" class="url-input" placeholder="YouTube URL 입력..." />
-        <button class="save-btn start-btn" onclick="startTranslation()">START</button>
-        <button class="save-btn stop-btn" onclick="stopTranslation()">STOP</button>
+        {'<input type="text" id="urlInput" class="url-input" placeholder="YouTube URL 입력..." />' if admin else ''}
+        {'<button class="save-btn start-btn" onclick="startTranslation()">START</button>' if admin else ''}
+        {'<button class="save-btn stop-btn" onclick="stopTranslation()">STOP</button>' if admin else ''}
         <button class="save-btn" onclick="saveMarkdown()">MD</button>
         <button class="save-btn" onclick="saveTxt()">TXT</button>
         <span class="live-badge" id="liveBadge">READY</span>
@@ -480,7 +496,7 @@ def build_html(video_id=""):
     try {{
       const r = await fetch('/api/start', {{
         method: 'POST',
-        headers: {{ 'Content-Type': 'application/json' }},
+        headers: {{ 'Content-Type': 'application/json', 'X-Admin-Key': '1123' }},
         body: JSON.stringify({{ url }})
       }});
       const data = await r.json();
@@ -500,7 +516,7 @@ def build_html(video_id=""):
   async function stopTranslation() {{
     if (!confirm('번역을 종료할까요?')) return;
     try {{
-      await fetch('/api/stop');
+      await fetch('/api/stop', {{ headers: {{ 'X-Admin-Key': '1123' }} }});
       document.getElementById('liveBadge').textContent = 'STOPPED';
       document.getElementById('liveBadge').style.background = '#6b7280';
     }} catch(e) {{}}
