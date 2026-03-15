@@ -265,39 +265,68 @@ def main():
 
     except KeyboardInterrupt:
         print("\n[중단] 사용자 중단")
-    finally:
         ff_proc.terminate()
         yt_proc.terminate()
-        print(f"[완료] 총 {segment_count}개 세그먼트 번역")
+        return segment_count, False
+    
+    ff_proc.terminate()
+    yt_proc.terminate()
 
-        # state 업데이트
-        state_file = Path(__file__).parent / "state.json"
-        if state_file.exists():
-            try:
-                state = json.loads(state_file.read_text())
-                state["running"] = False
-                state_file.write_text(json.dumps(state))
-            except Exception:
-                pass
+    # 스트림이 아직 라이브인지 확인
+    print("[확인] 스트림 상태 확인 중...")
+    check = subprocess.run(
+        ["yt-dlp", "--dump-json", "--no-warnings", youtube_url],
+        capture_output=True, text=True
+    )
+    try:
+        meta = json.loads(check.stdout)
+        still_live = meta.get("is_live", False)
+    except Exception:
+        still_live = False
 
-        # 종료 신호 파일 생성
-        done_file = Path(__file__).parent / "DONE"
-        done_file.write_text(f"completed: {datetime.now().isoformat()}\nsegments: {segment_count}\n")
+    if still_live:
+        print(f"[재연결] 스트림 아직 라이브 — 5초 후 재시작 (세그먼트: {segment_count}개)")
+        time.sleep(5)
+        return segment_count, True
+    else:
+        print(f"[완료] 스트림 종료 확인 — 총 {segment_count}개 세그먼트")
+        return segment_count, False
 
-        # 자동 이메일 전송 (gog 인증 필요)
-        log_file = Path(__file__).parent / "translation_log.md"
-        if log_file.exists() and segment_count > 0:
-            gog_env = os.environ.copy()
-            gog_env["GOG_KEYRING_PASSWORD"] = "openclaw"
-            subprocess.run([
-                "gog", "gmail", "send",
-                "--to", "sund4y1123@gmail.com",
-                "--subject", f"번역 완료 ({segment_count}개 세그먼트, {datetime.now().strftime('%Y-%m-%d %H:%M')})",
-                "--body", "스트림 종료. 번역 로그 첨부.",
-                "--attach", str(log_file),
-                "--account", "sundaibot0@gmail.com",
-            ], capture_output=True, env=gog_env)
+
+def cleanup(total_segments):
+    """종료 시 정리: state 업데이트 + DONE 파일 + 이메일"""
+    state_file = Path(__file__).parent / "state.json"
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text())
+            state["running"] = False
+            state_file.write_text(json.dumps(state))
+        except Exception:
+            pass
+
+    done_file = Path(__file__).parent / "DONE"
+    done_file.write_text(f"completed: {datetime.now().isoformat()}\nsegments: {total_segments}\n")
+
+    log_file = Path(__file__).parent / "translation_log.md"
+    if log_file.exists() and total_segments > 0:
+        gog_env = os.environ.copy()
+        gog_env["GOG_KEYRING_PASSWORD"] = "openclaw"
+        subprocess.run([
+            "gog", "gmail", "send",
+            "--to", "sund4y1123@gmail.com",
+            "--subject", f"번역 완료 ({total_segments}개 세그먼트, {datetime.now().strftime('%Y-%m-%d %H:%M')})",
+            "--body", "스트림 종료. 번역 로그 첨부.",
+            "--attach", str(log_file),
+            "--account", "sundaibot0@gmail.com",
+        ], capture_output=True, env=gog_env)
 
 
 if __name__ == "__main__":
-    main()
+    total = 0
+    while True:
+        count, should_restart = main()
+        total += count
+        if should_restart:
+            continue
+        break
+    cleanup(total)
