@@ -556,9 +556,6 @@ def build_html(video_id=""):
         if (st.running) {{
           badge.textContent = 'LIVE';
           badge.style.background = '#e53e3e';
-        }} else if (data.length > 0) {{
-          badge.textContent = 'ENDED';
-          badge.style.background = '#6b7280';
         }} else {{
           badge.textContent = 'READY';
           badge.style.background = '#6b7280';
