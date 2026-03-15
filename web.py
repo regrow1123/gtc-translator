@@ -108,6 +108,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(b'{"ok": false, "message": "forbidden"}')
                 return
             subprocess.run(["pkill", "-f", "translate.py"], capture_output=True)
+            # state 업데이트
+            if STATE_FILE.exists():
+                try:
+                    state = json.loads(STATE_FILE.read_text())
+                    state["running"] = False
+                    STATE_FILE.write_text(json.dumps(state))
+                except Exception:
+                    pass
             # 이메일 전송
             log_file = Path(__file__).parent / "translation_log.md"
             if log_file.exists():
@@ -517,6 +525,13 @@ def build_html(video_id="", admin=False):
       const r = await fetch('/api/translations');
       const data = await r.json();
 
+      // 상태 업데이트
+      const badge = document.getElementById('liveBadge');
+      if (data.length > 0 && data.length !== lastCount) {{
+        badge.textContent = 'LIVE';
+        badge.style.background = '#e53e3e';
+      }}
+
       if (data.length !== lastCount) {{
         allData = data;
         const container = document.getElementById('translations');
@@ -615,6 +630,20 @@ def build_html(video_id="", admin=False):
     }} catch(e) {{}}
   }}
 
+  // 초기 상태 확인
+  async function checkState() {{
+    try {{
+      const r = await fetch('/api/state');
+      const state = await r.json();
+      const badge = document.getElementById('liveBadge');
+      if (state.running) {{
+        badge.textContent = 'LIVE';
+        badge.style.background = '#e53e3e';
+      }}
+    }} catch(e) {{}}
+  }}
+
+  checkState();
   fetchTranslations();
   setInterval(fetchTranslations, 3000);
 
