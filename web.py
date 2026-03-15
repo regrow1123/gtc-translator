@@ -156,7 +156,6 @@ class Handler(BaseHTTPRequestHandler):
         # 메인 페이지
         params = urllib.parse.parse_qs(parsed.query)
         video_id = params.get("v", [""])[0]
-        admin = params.get("admin", [""])[0] == "1123"
 
         # v 파라미터 없으면 state에서 가져오기
         if not video_id and STATE_FILE.exists():
@@ -166,7 +165,7 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-        html = build_html(video_id, admin)
+        html = build_html(video_id)
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
@@ -179,7 +178,7 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
-def build_html(video_id="", admin=False):
+def build_html(video_id=""):
     youtube_embed = ""
     if video_id:
         youtube_embed = f'<iframe src="https://www.youtube.com/embed/{video_id}?autoplay=1" frameborder="0" allowfullscreen allow="autoplay"></iframe>'
@@ -378,6 +377,32 @@ def build_html(video_id="", admin=False):
     border-color: #f59e0b;
   }}
 
+  .admin-only {{
+    opacity: 0.3;
+    pointer-events: none;
+  }}
+
+  .admin-only.unlocked {{
+    opacity: 1;
+    pointer-events: auto;
+  }}
+
+  .admin-login-btn {{
+    border-color: #8b5cf6;
+    color: #8b5cf6;
+  }}
+
+  .admin-login-btn:hover {{
+    background: #8b5cf6;
+    color: #fff;
+  }}
+
+  .admin-login-btn.active {{
+    background: #8b5cf6;
+    color: #fff;
+    border-color: #8b5cf6;
+  }}
+
   .translations {{
     flex: 1;
     overflow-y: auto;
@@ -490,12 +515,13 @@ def build_html(video_id="", admin=False):
     <div class="panel-header">
       <span class="panel-title">LIVE TRANSLATION</span>
       <div>
-        {'<input type="text" id="urlInput" class="url-input" placeholder="YouTube URL 입력..." />' if admin else ''}
-        {'<button class="save-btn start-btn" onclick="startTranslation()">START</button>' if admin else ''}
-        {'<button class="save-btn stop-btn" onclick="stopTranslation()">STOP</button>' if admin else ''}
-        {'<button class="save-btn translate-btn" id="translateBtn" onclick="toggleTranslate()">TRANSLATE: OFF</button>' if admin else ''}
+        <input type="text" id="urlInput" class="url-input admin-only" placeholder="YouTube URL..." disabled />
+        <button class="save-btn start-btn admin-only" onclick="startTranslation()" disabled>START</button>
+        <button class="save-btn stop-btn admin-only" onclick="stopTranslation()" disabled>STOP</button>
+        <button class="save-btn translate-btn admin-only" id="translateBtn" onclick="toggleTranslate()" disabled>TRANSLATE: OFF</button>
         <button class="save-btn" onclick="saveMarkdown()">MD</button>
         <button class="save-btn" onclick="saveTxt()">TXT</button>
+        <button class="save-btn admin-login-btn" id="adminBtn" onclick="toggleAdmin()">ADMIN</button>
         <span class="live-badge" id="liveBadge">READY</span>
       </div>
     </div>
@@ -568,6 +594,33 @@ def build_html(video_id="", admin=False):
       txt += `[${{d.time}}]\\n${{d.kr}}\\n${{d.en}}\\n\\n`;
     }});
     saveFile(txt, 'translation_' + new Date().toISOString().slice(0,10) + '.txt');
+  }}
+
+  let isAdmin = false;
+
+  function toggleAdmin() {{
+    if (isAdmin) {{
+      isAdmin = false;
+      document.querySelectorAll('.admin-only').forEach(el => {{
+        el.classList.remove('unlocked');
+        el.disabled = true;
+      }});
+      document.getElementById('adminBtn').classList.remove('active');
+      document.getElementById('adminBtn').textContent = 'ADMIN';
+      return;
+    }}
+    const pw = prompt('관리자 암호:');
+    if (pw === '1123') {{
+      isAdmin = true;
+      document.querySelectorAll('.admin-only').forEach(el => {{
+        el.classList.add('unlocked');
+        el.disabled = false;
+      }});
+      document.getElementById('adminBtn').classList.add('active');
+      document.getElementById('adminBtn').textContent = 'ADMIN ON';
+    }} else if (pw !== null) {{
+      alert('잘못된 암호');
+    }}
   }}
 
   async function toggleTranslate() {{
