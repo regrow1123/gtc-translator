@@ -519,8 +519,7 @@ def build_html(video_id=""):
         <button class="save-btn start-btn admin-only" onclick="startTranslation()" disabled>START</button>
         <button class="save-btn stop-btn admin-only" onclick="stopTranslation()" disabled>STOP</button>
         <button class="save-btn translate-btn admin-only" id="translateBtn" onclick="toggleTranslate()" disabled>TRANSLATE: OFF</button>
-        <button class="save-btn" onclick="saveMarkdown()">MD</button>
-        <button class="save-btn" onclick="saveTxt()">TXT</button>
+        <button class="save-btn" onclick="saveTxt()">SAVE</button>
         <button class="save-btn admin-login-btn" id="adminBtn" onclick="toggleAdmin()">ADMIN</button>
         <span class="live-badge" id="liveBadge">READY</span>
       </div>
