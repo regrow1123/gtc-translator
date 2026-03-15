@@ -285,8 +285,8 @@ def main():
         still_live = False
 
     if still_live:
-        print(f"[재연결] 스트림 아직 라이브 — 5초 후 재시작 (세그먼트: {segment_count}개)")
-        time.sleep(5)
+        print(f"[재연결] 스트림 아직 라이브 — 3초 후 재시작 (세그먼트: {segment_count}개)")
+        time.sleep(3)
         return segment_count, True
     else:
         print(f"[완료] 스트림 종료 확인 — 총 {segment_count}개 세그먼트")
@@ -323,10 +323,18 @@ def cleanup(total_segments):
 
 if __name__ == "__main__":
     total = 0
+    retries = 0
+    MAX_RETRIES = 10
+
     while True:
         count, should_restart = main()
         total += count
         if should_restart:
+            retries += 1
+            if retries > MAX_RETRIES:
+                print(f"[중단] 최대 재시도 {MAX_RETRIES}회 초과")
+                break
+            print(f"[재시도 {retries}/{MAX_RETRIES}]")
             continue
         break
     cleanup(total)
