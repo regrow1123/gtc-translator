@@ -133,6 +133,8 @@ def main():
     text_buffer = []
     last_send = time.time()
     segment_count = 0
+    stream_start = time.time()
+    chunks_read = 0
 
     print("[실행] 실시간 번역 시작 (Ctrl+C로 종료)")
 
@@ -143,6 +145,8 @@ def main():
                 print("[종료] 스트림 끝")
                 break
 
+            chunks_read += 1
+            elapsed_sec = chunks_read * CHUNK_SECONDS
             audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
             segments, _ = model.transcribe(audio, language="en", beam_size=3)
             text = " ".join([s.text.strip() for s in segments])
@@ -159,7 +163,9 @@ def main():
 
             if elapsed >= BUFFER_SECONDS and combined and len(combined) >= MIN_CHARS:
                 segment_count += 1
-                timestamp = datetime.now().strftime("%H:%M:%S")
+                # 서버 시간 + 영상 경과 시간
+                h, m, s = elapsed_sec // 3600, (elapsed_sec % 3600) // 60, elapsed_sec % 60
+                timestamp = f"{datetime.now().strftime('%H:%M:%S')} ({int(h):02d}:{int(m):02d}:{int(s):02d})"
 
                 # 번역 활성화 여부 확인
                 translate_enabled = False
