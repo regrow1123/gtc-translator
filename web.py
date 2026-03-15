@@ -596,7 +596,10 @@ def build_html(video_id=""):
   function saveTxt() {{
     let txt = '';
     allData.forEach(d => {{
-      txt += `[${{d.time}}]\\n${{d.kr}}\\n${{d.en}}\\n\\n`;
+      if (d.live) return;
+      txt += `[${{d.time}}]\\n`;
+      if (d.kr) txt += `${{d.kr}}\\n`;
+      txt += `${{d.en}}\\n\\n`;
     }});
     saveFile(txt, 'translation_' + new Date().toISOString().slice(0,10) + '.txt');
   }}
