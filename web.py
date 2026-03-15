@@ -21,6 +21,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
 
+        if parsed.path == "/api/stop":
+            # 번역 프로세스 종료
+            import subprocess
+            subprocess.run(["pkill", "-f", "translate.py"], capture_output=True)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"ok": true, "message": "stopped"}')
+            return
+
         if parsed.path == "/api/translations":
             # JSON API — 번역 데이터
             data = get_translations()
@@ -194,6 +204,17 @@ def build_html(video_id=""):
     border-color: var(--accent);
   }}
 
+  .stop-btn {{
+    border-color: #e53e3e;
+    color: #e53e3e;
+  }}
+
+  .stop-btn:hover {{
+    background: #e53e3e;
+    color: #fff;
+    border-color: #e53e3e;
+  }}
+
   .translations {{
     flex: 1;
     overflow-y: auto;
@@ -300,7 +321,8 @@ def build_html(video_id=""):
       <div>
         <button class="save-btn" onclick="saveMarkdown()">MD</button>
         <button class="save-btn" onclick="saveTxt()">TXT</button>
-        <span class="live-badge">LIVE</span>
+        <button class="save-btn stop-btn" onclick="stopTranslation()">STOP</button>
+        <span class="live-badge" id="liveBadge">LIVE</span>
       </div>
     </div>
 
@@ -365,6 +387,15 @@ def build_html(video_id=""):
       txt += `[${{d.time}}]\\n${{d.kr}}\\n${{d.en}}\\n\\n`;
     }});
     saveFile(txt, 'translation_' + new Date().toISOString().slice(0,10) + '.txt');
+  }}
+
+  async function stopTranslation() {{
+    if (!confirm('번역을 종료할까요?')) return;
+    try {{
+      await fetch('/api/stop');
+      document.getElementById('liveBadge').textContent = 'STOPPED';
+      document.getElementById('liveBadge').style.background = '#6b7280';
+    }} catch(e) {{}}
   }}
 
   fetchTranslations();
