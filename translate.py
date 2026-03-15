@@ -113,9 +113,24 @@ def main():
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         f.write(f"# 실시간 번역 로그\n시작: {now}\nURL: {youtube_url}\n\n---\n")
 
-    # 포맷 자동 선택 (오디오만 가능하면 오디오만)
+    # 메타데이터 + 포맷 확인
     print("[포맷] 확인 중...")
     import subprocess as sp
+
+    # 스트림 시작 시간 가져오기
+    stream_start_ts = 0
+    meta_result = sp.run(
+        ["yt-dlp", "--dump-json", "--no-warnings", youtube_url],
+        capture_output=True, text=True
+    )
+    try:
+        meta = json.loads(meta_result.stdout)
+        stream_start_ts = meta.get("release_timestamp", 0) or meta.get("timestamp", 0) or 0
+        if stream_start_ts:
+            print(f"[스트림 시작] {datetime.fromtimestamp(stream_start_ts).strftime('%Y-%m-%d %H:%M:%S')}")
+    except Exception:
+        pass
+
     fmt_result = sp.run(
         ["yt-dlp", "--list-formats", "--no-warnings", youtube_url],
         capture_output=True, text=True
@@ -149,7 +164,6 @@ def main():
     last_send = time.time()
     segment_count = 0
     stream_start = time.time()
-    chunks_read = 0
 
     print("[실행] 실시간 번역 시작 (Ctrl+C로 종료)")
 
@@ -160,8 +174,6 @@ def main():
                 print("[종료] 스트림 끝")
                 break
 
-            chunks_read += 1
-            elapsed_sec = chunks_read * CHUNK_SECONDS
             audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
             segments, _ = model.transcribe(audio, language="en", beam_size=3)
             text = " ".join([s.text.strip() for s in segments])
@@ -178,9 +190,14 @@ def main():
 
             if elapsed >= BUFFER_SECONDS and combined and len(combined) >= MIN_CHARS:
                 segment_count += 1
-                # 서버 시간 + 영상 경과 시간
-                h, m, s = elapsed_sec // 3600, (elapsed_sec % 3600) // 60, elapsed_sec % 60
-                timestamp = f"{datetime.now().strftime('%H:%M:%S')} ({int(h):02d}:{int(m):02d}:{int(s):02d})"
+                # 서버 시간 + 영상 내 경과 시간
+                now_str = datetime.now().strftime('%H:%M:%S')
+                if stream_start_ts:
+                    elapsed = int(time.time() - stream_start_ts)
+                    h, m, s = elapsed // 3600, (elapsed % 3600) // 60, elapsed % 60
+                    timestamp = f"{now_str} ({int(h):02d}:{int(m):02d}:{int(s):02d})"
+                else:
+                    timestamp = now_str
 
                 # 번역 활성화 여부 확인
                 translate_enabled = False
