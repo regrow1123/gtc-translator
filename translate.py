@@ -199,6 +199,16 @@ def main():
         yt_proc.terminate()
         print(f"[완료] 총 {segment_count}개 세그먼트 번역")
 
+        # state 업데이트
+        state_file = Path(__file__).parent / "state.json"
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text())
+                state["running"] = False
+                state_file.write_text(json.dumps(state))
+            except Exception:
+                pass
+
         # 종료 신호 파일 생성
         done_file = Path(__file__).parent / "DONE"
         done_file.write_text(f"completed: {datetime.now().isoformat()}\nsegments: {segment_count}\n")
