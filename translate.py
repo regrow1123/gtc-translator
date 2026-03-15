@@ -176,6 +176,10 @@ def main():
         yt_proc.terminate()
         print(f"[완료] 총 {segment_count}개 세그먼트 번역")
 
+        # 종료 신호 파일 생성
+        done_file = Path(__file__).parent / "DONE"
+        done_file.write_text(f"completed: {datetime.now().isoformat()}\nsegments: {segment_count}\n")
+
 
 if __name__ == "__main__":
     main()
