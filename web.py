@@ -2,6 +2,8 @@
 GTC 번역 뷰어 — YouTube 영상 + 실시간 번역 동시 표시
 """
 import json
+import os
+import time
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
@@ -20,6 +22,46 @@ def get_translations(limit=50):
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
+
+        if parsed.path == "/api/start":
+            import subprocess
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(content_length)) if content_length else {}
+            url = body.get("url", "")
+            if not url:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": false, "message": "URL required"}')
+                return
+            # 기존 프로세스 종료
+            subprocess.run(["pkill", "-f", "translate.py"], capture_output=True)
+            time.sleep(1)
+            # translations.json 초기화
+            Path(__file__).parent.joinpath("translations.json").write_text("[]")
+            # 새 프로세스 시작
+            env = os.environ.copy()
+            env["LD_LIBRARY_PATH"] = "/home/sund4y/stable-diffusion-webui/venv/lib/python3.11/site-packages/torch/lib"
+            env["PYTHONUNBUFFERED"] = "1"
+            env["PATH"] = f"{os.environ['HOME']}/.deno/bin:{env['PATH']}"
+            env["OPENCLAW_TOKEN"] = "eab750efc63e4b50c862c132cad34dac9df9cefd2bec812b"
+            subprocess.Popen(
+                ["python3", str(Path(__file__).parent / "translate.py"), url],
+                env=env,
+                stdout=open("/tmp/gtc_translate.log", "w"),
+                stderr=subprocess.STDOUT,
+            )
+            # YouTube 영상 ID 추출
+            video_id = ""
+            if "v=" in url:
+                video_id = url.split("v=")[1].split("&")[0]
+            elif "youtu.be/" in url:
+                video_id = url.split("youtu.be/")[1].split("?")[0]
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": True, "video_id": video_id}).encode())
+            return
 
         if parsed.path == "/api/stop":
             # 번역 프로세스 종료
@@ -55,6 +97,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.end_headers()
         self.wfile.write(html.encode())
+
+    def do_POST(self):
+        return self.do_GET()
 
     def log_message(self, fmt, *args):
         pass
@@ -204,6 +249,33 @@ def build_html(video_id=""):
     border-color: var(--accent);
   }}
 
+  .url-input {{
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    width: 220px;
+    outline: none;
+  }}
+
+  .url-input:focus {{
+    border-color: var(--accent);
+  }}
+
+  .start-btn {{
+    border-color: var(--accent);
+    color: var(--accent);
+  }}
+
+  .start-btn:hover {{
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }}
+
   .stop-btn {{
     border-color: #e53e3e;
     color: #e53e3e;
@@ -319,10 +391,12 @@ def build_html(video_id=""):
     <div class="panel-header">
       <span class="panel-title">LIVE TRANSLATION</span>
       <div>
+        <input type="text" id="urlInput" class="url-input" placeholder="YouTube URL 입력..." />
+        <button class="save-btn start-btn" onclick="startTranslation()">START</button>
+        <button class="save-btn stop-btn" onclick="stopTranslation()">STOP</button>
         <button class="save-btn" onclick="saveMarkdown()">MD</button>
         <button class="save-btn" onclick="saveTxt()">TXT</button>
-        <button class="save-btn stop-btn" onclick="stopTranslation()">STOP</button>
-        <span class="live-badge" id="liveBadge">LIVE</span>
+        <span class="live-badge" id="liveBadge">READY</span>
       </div>
     </div>
 
@@ -387,6 +461,31 @@ def build_html(video_id=""):
       txt += `[${{d.time}}]\\n${{d.kr}}\\n${{d.en}}\\n\\n`;
     }});
     saveFile(txt, 'translation_' + new Date().toISOString().slice(0,10) + '.txt');
+  }}
+
+  async function startTranslation() {{
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) {{ alert('YouTube URL을 입력하세요'); return; }}
+    if (!confirm('번역을 시작할까요?')) return;
+
+    try {{
+      const r = await fetch('/api/start', {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ url }})
+      }});
+      const data = await r.json();
+      if (data.ok) {{
+        document.getElementById('liveBadge').textContent = 'LIVE';
+        document.getElementById('liveBadge').style.background = '#e53e3e';
+        // 영상 업데이트
+        if (data.video_id) {{
+          const vp = document.getElementById('videoPanel');
+          vp.innerHTML = '<iframe src="https://www.youtube.com/embed/' + data.video_id + '?autoplay=1" frameborder="0" allowfullscreen allow="autoplay"></iframe>';
+        }}
+        lastCount = 0;
+      }}
+    }} catch(e) {{ alert('시작 실패: ' + e); }}
   }}
 
   async function stopTranslation() {{
