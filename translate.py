@@ -88,7 +88,10 @@ def log_translation(original, translated, timestamp):
             data = json.loads(TRANSLATIONS_JSON.read_text())
         except Exception:
             data = []
-    data.append({"time": timestamp, "en": original, "kr": translated})
+    entry = {"time": timestamp, "en": original}
+    if translated:
+        entry["kr"] = translated
+    data.append(entry)
     TRANSLATIONS_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2))
 
 
@@ -158,13 +161,27 @@ def main():
                 segment_count += 1
                 timestamp = datetime.now().strftime("%H:%M:%S")
 
-                print(f"[번역 중] ({len(combined)} chars)...")
-                translated = translate_openclaw(combined)
+                # 번역 활성화 여부 확인
+                translate_enabled = False
+                state_file = Path(__file__).parent / "state.json"
+                if state_file.exists():
+                    try:
+                        state = json.loads(state_file.read_text())
+                        translate_enabled = state.get("translate", False)
+                    except Exception:
+                        pass
 
-                if translated:
-                    translation_history.append(translated)
-                    log_translation(combined, translated, timestamp)
-                    print(f"[번역] {translated[:80]}...")
+                if translate_enabled:
+                    print(f"[번역 중] ({len(combined)} chars)...")
+                    translated = translate_openclaw(combined)
+                    if translated:
+                        translation_history.append(translated)
+                        log_translation(combined, translated, timestamp)
+                        print(f"[번역] {translated[:80]}...")
+                else:
+                    # STT 원문만 저장
+                    log_translation(combined, "", timestamp)
+                    print(f"[원문] {combined[:80]}...")
 
                 text_buffer = []
                 last_send = time.time()

@@ -24,6 +24,30 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
 
+        if parsed.path == "/api/toggle-translate":
+            auth = self.headers.get("X-Admin-Key", "")
+            if auth != "1123":
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": false}')
+                return
+            # 상태 토글
+            state = {}
+            if STATE_FILE.exists():
+                try:
+                    state = json.loads(STATE_FILE.read_text())
+                except Exception:
+                    pass
+            current = state.get("translate", False)
+            state["translate"] = not current
+            STATE_FILE.write_text(json.dumps(state))
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": True, "enabled": not current}).encode())
+            return
+
         if parsed.path == "/api/start":
             import subprocess
             # 관리자 인증
@@ -337,6 +361,23 @@ def build_html(video_id="", admin=False):
     border-color: #e53e3e;
   }}
 
+  .translate-btn {{
+    border-color: #f59e0b;
+    color: #f59e0b;
+  }}
+
+  .translate-btn:hover {{
+    background: #f59e0b;
+    color: #000;
+    border-color: #f59e0b;
+  }}
+
+  .translate-btn.active {{
+    background: #f59e0b;
+    color: #000;
+    border-color: #f59e0b;
+  }}
+
   .translations {{
     flex: 1;
     overflow-y: auto;
@@ -380,6 +421,14 @@ def build_html(video_id="", admin=False):
     font-style: italic;
     border-top: 1px solid var(--border);
     padding-top: 8px;
+  }}
+
+  .seg-en-only {{
+    font-size: 14px;
+    color: var(--text);
+    font-style: normal;
+    border-top: none;
+    padding-top: 0;
   }}
 
   .status-bar {{
@@ -444,6 +493,7 @@ def build_html(video_id="", admin=False):
         {'<input type="text" id="urlInput" class="url-input" placeholder="YouTube URL 입력..." />' if admin else ''}
         {'<button class="save-btn start-btn" onclick="startTranslation()">START</button>' if admin else ''}
         {'<button class="save-btn stop-btn" onclick="stopTranslation()">STOP</button>' if admin else ''}
+        {'<button class="save-btn translate-btn" id="translateBtn" onclick="toggleTranslate()">TRANSLATE: OFF</button>' if admin else ''}
         <button class="save-btn" onclick="saveMarkdown()">MD</button>
         <button class="save-btn" onclick="saveTxt()">TXT</button>
         <span class="live-badge" id="liveBadge">READY</span>
@@ -473,8 +523,8 @@ def build_html(video_id="", admin=False):
         container.innerHTML = data.map(d => `
           <div class="segment">
             <div class="seg-time">${{d.time}}</div>
-            <div class="seg-kr">${{d.kr}}</div>
-            <div class="seg-en">${{d.en}}</div>
+            ${{d.kr ? `<div class="seg-kr">${{d.kr}}</div>` : ''}}
+            <div class="seg-en ${{d.kr ? '' : 'seg-en-only'}}">${{d.en}}</div>
           </div>
         `).join('');
 
@@ -511,6 +561,24 @@ def build_html(video_id="", admin=False):
       txt += `[${{d.time}}]\\n${{d.kr}}\\n${{d.en}}\\n\\n`;
     }});
     saveFile(txt, 'translation_' + new Date().toISOString().slice(0,10) + '.txt');
+  }}
+
+  async function toggleTranslate() {{
+    try {{
+      const r = await fetch('/api/toggle-translate', {{
+        method: 'POST',
+        headers: {{ 'X-Admin-Key': '1123' }}
+      }});
+      const data = await r.json();
+      const btn = document.getElementById('translateBtn');
+      if (data.enabled) {{
+        btn.textContent = 'TRANSLATE: ON';
+        btn.classList.add('active');
+      }} else {{
+        btn.textContent = 'TRANSLATE: OFF';
+        btn.classList.remove('active');
+      }}
+    }} catch(e) {{}}
   }}
 
   async function startTranslation() {{
