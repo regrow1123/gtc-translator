@@ -113,10 +113,25 @@ def main():
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         f.write(f"# 실시간 번역 로그\n시작: {now}\nURL: {youtube_url}\n\n---\n")
 
+    # 포맷 자동 선택 (오디오만 가능하면 오디오만)
+    print("[포맷] 확인 중...")
+    import subprocess as sp
+    fmt_result = sp.run(
+        ["yt-dlp", "--list-formats", "--no-warnings", youtube_url],
+        capture_output=True, text=True
+    )
+    fmt_output = fmt_result.stdout
+    if "audio only" in fmt_output:
+        audio_format = "bestaudio"
+        print("[포맷] 오디오 전용 포맷 사용")
+    else:
+        audio_format = "worst"  # 가장 작은 영상+오디오
+        print("[포맷] 최저화질 포맷 사용 (오디오 추출)")
+
     # yt-dlp → ffmpeg → PCM 스트림
     print("[스트림] 오디오 추출 시작...")
     yt_cmd = [
-        "yt-dlp", "-f", "91",
+        "yt-dlp", "-f", audio_format,
         "-o", "-", "--no-warnings", youtube_url,
     ]
     ff_cmd = [
