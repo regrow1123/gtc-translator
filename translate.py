@@ -282,7 +282,7 @@ def main():
         meta = json.loads(check.stdout)
         still_live = meta.get("is_live", False)
     except Exception:
-        still_live = False
+        still_live = True  # 확인 실패 시 라이브로 간주 → 재시도
 
     if still_live:
         print(f"[재연결] 스트림 아직 라이브 — 3초 후 재시작 (세그먼트: {segment_count}개)")
