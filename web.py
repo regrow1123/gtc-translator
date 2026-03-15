@@ -116,16 +116,8 @@ class Handler(BaseHTTPRequestHandler):
                     STATE_FILE.write_text(json.dumps(state))
                 except Exception:
                     pass
-            # 이메일 전송
-            log_file = Path(__file__).parent / "translation_log.md"
-            if log_file.exists():
-                subprocess.Popen([
-                    "gog", "gmail", "send",
-                    "--to", "sund4y1123@gmail.com",
-                    "--subject", f"GTC 번역 로그 ({time.strftime('%Y-%m-%d %H:%M')})",
-                    "--body", "번역 로그 첨부",
-                    "--attach", str(log_file),
-                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # 웹에서 다운로드 가능하므로 별도 전송 불필요
+            # MD/TXT 버튼으로 다운로드
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
