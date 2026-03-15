@@ -10,6 +10,7 @@ import urllib.parse
 
 PORT = 8091
 TRANSLATIONS_FILE = Path(__file__).parent / "translations.json"
+STATE_FILE = Path(__file__).parent / "state.json"
 
 
 def get_translations(limit=50):
@@ -65,6 +66,8 @@ class Handler(BaseHTTPRequestHandler):
                 video_id = url.split("v=")[1].split("&")[0]
             elif "youtu.be/" in url:
                 video_id = url.split("youtu.be/")[1].split("?")[0]
+            # 상태 저장
+            STATE_FILE.write_text(json.dumps({"video_id": video_id, "running": True}))
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -97,6 +100,20 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(b'{"ok": true, "message": "stopped + email sent"}')
             return
 
+        if parsed.path == "/api/state":
+            state = {}
+            if STATE_FILE.exists():
+                try:
+                    state = json.loads(STATE_FILE.read_text())
+                except Exception:
+                    pass
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(json.dumps(state).encode())
+            return
+
         if parsed.path == "/api/translations":
             # JSON API — 번역 데이터
             data = get_translations()
@@ -116,6 +133,14 @@ class Handler(BaseHTTPRequestHandler):
         params = urllib.parse.parse_qs(parsed.query)
         video_id = params.get("v", [""])[0]
         admin = params.get("admin", [""])[0] == "1123"
+
+        # v 파라미터 없으면 state에서 가져오기
+        if not video_id and STATE_FILE.exists():
+            try:
+                state = json.loads(STATE_FILE.read_text())
+                video_id = state.get("video_id", "")
+            except Exception:
+                pass
 
         html = build_html(video_id, admin)
         self.send_response(200)

@@ -2,3 +2,4 @@ translations.json
 translation_log.md
 __pycache__/
 *.pyc
+state.json
