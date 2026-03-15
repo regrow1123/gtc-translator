@@ -557,7 +557,7 @@ def build_html(video_id=""):
           badge.textContent = 'LIVE';
           badge.style.background = '#e53e3e';
         }} else {{
-          badge.textContent = 'READY';
+          badge.textContent = 'STANDBY';
           badge.style.background = '#6b7280';
         }}
       }} catch(e) {{}}
