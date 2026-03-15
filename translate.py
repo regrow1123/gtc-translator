@@ -180,6 +180,18 @@ def main():
         done_file = Path(__file__).parent / "DONE"
         done_file.write_text(f"completed: {datetime.now().isoformat()}\nsegments: {segment_count}\n")
 
+        # 자동 이메일 전송
+        import subprocess as sp
+        log_file = Path(__file__).parent / "translation_log.md"
+        if log_file.exists() and segment_count > 0:
+            sp.run([
+                "gog", "gmail", "send",
+                "--to", "sund4y1123@gmail.com",
+                "--subject", f"번역 완료 ({segment_count}개 세그먼트, {datetime.now().strftime('%Y-%m-%d %H:%M')})",
+                "--body", "스트림 종료. 번역 로그 첨부.",
+                "--attach", str(log_file),
+            ], capture_output=True)
+
 
 if __name__ == "__main__":
     main()
