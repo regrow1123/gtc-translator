@@ -64,13 +64,22 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/stop":
-            # 번역 프로세스 종료
             import subprocess
             subprocess.run(["pkill", "-f", "translate.py"], capture_output=True)
+            # 이메일 전송
+            log_file = Path(__file__).parent / "translation_log.md"
+            if log_file.exists():
+                subprocess.Popen([
+                    "gog", "gmail", "send",
+                    "--to", "sund4y1123@gmail.com",
+                    "--subject", f"GTC 번역 로그 ({time.strftime('%Y-%m-%d %H:%M')})",
+                    "--body", "번역 로그 첨부",
+                    "--attach", str(log_file),
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(b'{"ok": true, "message": "stopped"}')
+            self.wfile.write(b'{"ok": true, "message": "stopped + email sent"}')
             return
 
         if parsed.path == "/api/translations":
