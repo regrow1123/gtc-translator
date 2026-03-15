@@ -287,13 +287,16 @@ def main():
         # 자동 이메일 전송 (gog 인증 필요)
         log_file = Path(__file__).parent / "translation_log.md"
         if log_file.exists() and segment_count > 0:
+            gog_env = os.environ.copy()
+            gog_env["GOG_KEYRING_PASSWORD"] = "openclaw"
             subprocess.run([
                 "gog", "gmail", "send",
                 "--to", "sund4y1123@gmail.com",
                 "--subject", f"번역 완료 ({segment_count}개 세그먼트, {datetime.now().strftime('%Y-%m-%d %H:%M')})",
                 "--body", "스트림 종료. 번역 로그 첨부.",
                 "--attach", str(log_file),
-            ], capture_output=True)
+                "--account", "sundaibot0@gmail.com",
+            ], capture_output=True, env=gog_env)
 
 
 if __name__ == "__main__":
