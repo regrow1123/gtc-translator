@@ -288,13 +288,16 @@ def build_html(video_id=""):
     font-family: 'JetBrains Mono', monospace;
   }}
 
-  .live-badge {{
-    background: #e53e3e;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 700;
+  .status-indicator {{
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #6b7280;
+    display: inline-block;
+  }}
+
+  .status-indicator.running {{
+    background: #22c55e;
     animation: pulse 2s infinite;
   }}
 
@@ -527,7 +530,7 @@ def build_html(video_id=""):
         <button class="save-btn translate-btn admin-only" id="translateBtn" onclick="toggleTranslate()" disabled>TRANSLATE: OFF</button>
         <button class="save-btn" onclick="saveTxt()">SAVE</button>
         <button class="save-btn admin-login-btn" id="adminBtn" onclick="toggleAdmin()">ADMIN</button>
-        <span class="live-badge" id="liveBadge">READY</span>
+        <span class="status-indicator" id="statusDot"></span>
       </div>
     </div>
 
@@ -549,16 +552,15 @@ def build_html(video_id=""):
       const data = await r.json();
 
       // 상태 업데이트
-      const badge = document.getElementById('liveBadge');
+      const badge = document.getElementById('statusDot');
       try {{
         const sr = await fetch('/api/state');
         const st = await sr.json();
+        const dot = document.getElementById('statusDot');
         if (st.running) {{
-          badge.textContent = 'LIVE';
-          badge.style.background = '#e53e3e';
+          dot.classList.add('running');
         }} else {{
-          badge.textContent = 'STANDBY';
-          badge.style.background = '#6b7280';
+          dot.classList.remove('running');
         }}
       }} catch(e) {{}}
 
@@ -668,8 +670,7 @@ def build_html(video_id=""):
       }});
       const data = await r.json();
       if (data.ok) {{
-        document.getElementById('liveBadge').textContent = 'LIVE';
-        document.getElementById('liveBadge').style.background = '#e53e3e';
+        document.getElementById('statusDot').classList.add('running');
         // 영상 업데이트
         if (data.video_id) {{
           const vp = document.getElementById('videoPanel');
@@ -684,8 +685,7 @@ def build_html(video_id=""):
     if (!confirm('번역을 종료할까요?')) return;
     try {{
       await fetch('/api/stop', {{ headers: {{ 'X-Admin-Key': '1123' }} }});
-      document.getElementById('liveBadge').textContent = 'STOPPED';
-      document.getElementById('liveBadge').style.background = '#6b7280';
+      document.getElementById('statusDot').classList.remove('running');
     }} catch(e) {{}}
   }}
 
@@ -694,10 +694,9 @@ def build_html(video_id=""):
     try {{
       const r = await fetch('/api/state');
       const state = await r.json();
-      const badge = document.getElementById('liveBadge');
+      const badge = document.getElementById('statusDot');
       if (state.running) {{
-        badge.textContent = 'LIVE';
-        badge.style.background = '#e53e3e';
+        badge.classList.add('running');
       }}
     }} catch(e) {{}}
   }}
