@@ -177,7 +177,11 @@ def main():
                 break
 
             audio = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
-            segments, _ = model.transcribe(audio, language="en", beam_size=3)
+            segments, _ = model.transcribe(
+                audio, language="en", beam_size=3,
+                vad_filter=True,
+                vad_parameters={"min_silence_duration_ms": 500},
+            )
             text = " ".join([s.text.strip() for s in segments])
 
             if text and len(text) >= 5:
