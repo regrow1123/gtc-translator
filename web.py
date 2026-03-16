@@ -21,6 +21,10 @@ def get_translations(limit=50):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def send_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Key")
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
 
@@ -168,11 +172,19 @@ class Handler(BaseHTTPRequestHandler):
         html = build_html(video_id)
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(html.encode())
 
     def do_POST(self):
         return self.do_GET()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Admin-Key")
+        self.end_headers()
 
     def log_message(self, fmt, *args):
         pass
